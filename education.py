@@ -27,6 +27,15 @@ max_count = len(my_tbody('tr'))
 # Connect to the database
 con = lite.connect('UNdata.db')
 
+def sqlTodf(query):
+    """creates a pandas dataframe from a sql query
+    assumes sqlite3 connection = con and cur = con.cursor()"""
+    with con:
+        cur.execute(query)
+        rows = cur.fetchall()
+        cols = [desc[0] for desc in cur.description]
+        return pd.DataFrame(rows, columns=cols)
+
 with con:
     cur = con.cursor()
     # Create the countries table
@@ -44,15 +53,16 @@ with con:
         data = (country,male,female,year)
         cur.execute("INSERT INTO countries VALUES(?,?,?,?)", data)
         
-    cur.execute("select * from countries")
-    rows = cur.fetchall()
-    cols = [desc[0] for desc in cur.description]
-    df = pd.DataFrame(rows, columns=cols)
+    # cur.execute("select * from countries")
+    # rows = cur.fetchall()
+    # cols = [desc[0] for desc in cur.description]
+    # df = pd.DataFrame(rows, columns=cols)
+    df_edu = sqlTodf("select * from countries")
     
 # Show descriptive statistics for the education data
 list = ['male','female']
 for each in list:
-    col = df[each]
+    col = df_edu[each]
     #plt.hist(col)
     print('Descriptive statistics for males: ')
     print('  Mean: {}'.format(col.mean()))
@@ -71,18 +81,24 @@ with open('GDP.csv','r') as inputFile:
     next(inputFile)
     header = next(inputFile)
     inputReader = csv.reader(inputFile)
+    country_list = []  # handles duplicate rows
     for line in inputReader:
-        if line[43] == '':
+        if line[43] == '' or line[0] in country_list:
             pass
         else:
+            country_list.append(line[0])
             data = (line[0], line[43],  line[44], line[45], line[46], line[47], line[48], line[49], line[50], line[51], line[52], line[53], line[54])
             with con:
                 cur.execute('INSERT INTO gdp (country_name, _1999, _2000, _2001, _2002, _2003, _2004, _2005, _2006, _2007, _2008, _2009, _2010) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',data)
     
-    cur.execute("select * from gdp")
-    rows = cur.fetchall()
-    cols = [desc[0] for desc in cur.description]
-    df_gdp = pd.DataFrame(rows, columns=cols)
+df_gdp = sqlTodf("select * from gdp")
+df_join = sqlTodf("select c.*, g.* from countries c join gdp g on c.country = g.country_name")
+df_join['gdp'] = ''
     
-
+#Find the gdp for the year of the education data point
+for i in range(0,df_join.shape[0]):
+    this = '_'+str(df_join['year'][i])
+    df_join['gdp'][i] = df_join[this][i]
     
+# Final clean data set to test with
+df_test = df_join[['country','male','female','year','gdp']]
