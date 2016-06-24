@@ -53,11 +53,7 @@ with con:
         data = (country,male,female,year)
         cur.execute("INSERT INTO countries VALUES(?,?,?,?)", data)
         
-    # cur.execute("select * from countries")
-    # rows = cur.fetchall()
-    # cols = [desc[0] for desc in cur.description]
-    # df = pd.DataFrame(rows, columns=cols)
-    df_edu = sqlTodf("select * from countries")
+df_edu = sqlTodf("select * from countries")
     
 # Show descriptive statistics for the education data
 list = ['male','female']
