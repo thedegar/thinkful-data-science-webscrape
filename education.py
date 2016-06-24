@@ -11,6 +11,8 @@ import sqlite3 as lite
 import pandas as pd
 import matplotlib.pyplot as plt
 import csv
+import numpy as np
+import statsmodels.api as sm
 
 url = "http://web.archive.org/web/20110514112442/http://unstats.un.org/unsd/demographic/products/socind/education.htm"
 
@@ -94,7 +96,84 @@ df_join['gdp'] = ''
 #Find the gdp for the year of the education data point
 for i in range(0,df_join.shape[0]):
     this = '_'+str(df_join['year'][i])
-    df_join['gdp'][i] = df_join[this][i]
+    df_join['gdp'][i] = float(df_join[this][i])
     
 # Final clean data set to test with
 df_test = df_join[['country','male','female','year','gdp']]
+male = df_test['male']
+female = df_test['female']
+gdp = df_test['gdp']
+
+# The dependent variables are male and female
+y_male = male
+y_female = female
+# The independent variable is gdp
+# converting to log.  As regular number the fit is even worse
+x = np.log(np.array(gdp, dtype=float))
+X = sm.add_constant(x)
+
+male_model = sm.OLS(y_male, X)
+female_model = sm.OLS(y_female, X)
+
+f_male = male_model.fit()
+f_female = female_model.fit()
+
+# Null hypothesis is that the education level and gdp do not relate to each other
+f_male.summary()
+"""
+Conclusion: 
+  Reject the null hypothesis since p < 0.05. 
+  Male education levels are impacted by the GPD of the country.
+  The fit of this model is not great though with R-squared = 0.248.
+  f(x) = 0.5437(log(x)) - 0.5170 
+                            OLS Regression Results                            
+==============================================================================
+Dep. Variable:                   male   R-squared:                       0.248
+Model:                            OLS   Adj. R-squared:                  0.242
+Method:                 Least Squares   F-statistic:                     46.72
+Date:                Fri, 24 Jun 2016   Prob (F-statistic):           2.23e-10
+Time:                        14:42:55   Log-Likelihood:                -327.83
+No. Observations:                 144   AIC:                             659.7
+Df Residuals:                     142   BIC:                             665.6
+Df Model:                           1                                         
+==============================================================================
+                 coef    std err          t      P>|t|      [95.0% Conf. Int.]
+------------------------------------------------------------------------------
+const         -0.5170      1.909     -0.271      0.787        -4.290     3.256
+x1             0.5437      0.080      6.835      0.000         0.386     0.701
+==============================================================================
+Omnibus:                        1.467   Durbin-Watson:                   2.184
+Prob(Omnibus):                  0.480   Jarque-Bera (JB):                1.077
+Skew:                          -0.189   Prob(JB):                        0.584
+Kurtosis:                       3.193   Cond. No.                         232.
+==============================================================================
+"""
+f_female.summary()
+"""
+Conclusion: 
+  Reject the null hypothesis since p < 0.05. 
+  Female education levels are impacted by the GPD of the country.
+  The fit of this model is also not great though with R-squared = 0.216.
+  f(x) = 0.6843(log(x)) - 3.7681
+                            OLS Regression Results                            
+==============================================================================
+Dep. Variable:                 female   R-squared:                       0.216
+Model:                            OLS   Adj. R-squared:                  0.210
+Method:                 Least Squares   F-statistic:                     39.12
+Date:                Fri, 24 Jun 2016   Prob (F-statistic):           4.42e-09
+Time:                        14:42:56   Log-Likelihood:                -373.74
+No. Observations:                 144   AIC:                             751.5
+Df Residuals:                     142   BIC:                             757.4
+Df Model:                           1                                         
+==============================================================================
+                 coef    std err          t      P>|t|      [95.0% Conf. Int.]
+------------------------------------------------------------------------------
+const         -3.7681      2.625     -1.435      0.153        -8.958     1.421
+x1             0.6843      0.109      6.254      0.000         0.468     0.901
+==============================================================================
+Omnibus:                        1.228   Durbin-Watson:                   2.119
+Prob(Omnibus):                  0.541   Jarque-Bera (JB):                1.326
+Skew:                          -0.197   Prob(JB):                        0.515
+Kurtosis:                       2.742   Cond. No.                         232.
+==============================================================================
+"""
